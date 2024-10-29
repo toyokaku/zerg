@@ -1,0 +1,80 @@
+#
+# * @description    Ansible Deployment Playbook
+# * @author         ryutoyokaku
+# * Copyright ©Pawgege LLC. All rights reserved.
+# * Use of this source code is governed by a BSD-style license in the LICENSE file.
+#
+
+---
+- name: Setup Raspberry Pi Master Node
+  hosts: master
+  become: true
+  tasks:
+    - name: Install required packages
+      apt:
+        name:
+          - git
+          - make
+          - curl
+          - golang-go
+        state: present
+        update_cache: yes
+
+    - name: Install K3s
+      shell: |
+        curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: Get node token
+      shell: cat /var/lib/rancher/k3s/server/node-token
+      register: node_token
+
+    - name: Store token for other plays
+      set_fact:
+        k3s_token: "{{ node_token.stdout }}"
+
+- name: Setup Coral Dev Boards
+  hosts: coral
+  become: true
+  tasks:
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Install K3s agent
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars['pi-master']['ansible_host'] }}:6443 K3S_TOKEN={{ hostvars['pi-master']['k3s_token'] }} sh -
+      args:
+        creates: /usr/local/bin/k3s-agent
+
+    - name: Setup TensorFlow
+      shell: |
+        apt-get install -y libedgetpu1-std
+        wget https://github.com/google-coral/edgetpu/raw/master/tutorial/download_and_install_edgetpu_runtime.sh
+        bash download_and_install_edgetpu_runtime.sh
+
+- name: Setup GPU Node
+  hosts: gpu
+  become: true
+  tasks:
+    - name: Install NVIDIA drivers and CUDA
+      shell: |
+        apt-get install -y nvidia-driver-460 nvidia-cuda-toolkit
+      args:
+        creates: /usr/local/cuda
+
+    - name: Install K3s agent
+      shell: |
+        curl -sfL https://get.k3s.io | K3S_URL=https://{{ hostvars['pi-master']['ansible_host'] }}:6443 K3S_TOKEN={{ hostvars['pi-master']['k3s_token'] }} sh -
+      args:
+        creates: /usr/local/bin/k3s-agent
+
+    - name: Install LibTorch
+      shell: |
+        wget https://download.pytorch.org/libtorch/cu110/libtorch-cxx11-abi-shared-with-deps-1.7.1%2Bcu110.zip
+        unzip libtorch-cxx11-abi-shared-with-deps-1.7.1+cu110.zip -d /usr/local
+      args:
+        creates: /usr/local/libtorch

@@ -1,0 +1,31 @@
+/*
+ * @description    Add to ~/.ssh/config on your Linux server.
+ * @author         ryutoyokaku
+ * Copyright ©Pawgege LLC. All rights reserved.
+ * Use of this source code is governed by a BSD-style license in the LICENSE file.
+*/
+
+Host pi-master
+    HostName 192.168.1.100
+    User pi
+    IdentityFile ~/.ssh/id_rsa
+    StrictHostKeyChecking no
+
+Host coral-1
+    HostName 192.168.1.101
+    User mendel
+    IdentityFile ~/.ssh/id_rsa
+    StrictHostKeyChecking no
+
+Host coral-2
+    HostName 192.168.1.102
+    User mendel
+    IdentityFile ~/.ssh/id_rsa
+    StrictHostKeyChecking no
+
+Host gpu-node
+    HostName 192.168.1.103
+    User ubuntu
+    IdentityFile ~/.ssh/id_rsa
+    StrictHostKeyChecking no
+    StrictHostKeyChecking no

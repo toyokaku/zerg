@@ -1,0 +1,103 @@
+/*
+ * @description    gRPC Service Definitions
+ * @author         ryutoyokaku
+ * Copyright ©Pawgege LLC. All rights reserved.
+ * Use of this source code is governed by a BSD-style license in the LICENSE file.
+*/
+
+syntax = "proto3";
+
+package edge.v1;
+option go_package = "edge/v1/proto";
+
+service DeviceManager {
+    // Register a new device with the control plane
+    rpc RegisterDevice (RegisterDeviceRequest) returns (RegisterDeviceResponse) {}
+    
+    // Report device status and resources
+    rpc ReportStatus (DeviceStatusRequest) returns (DeviceStatusResponse) {}
+    
+    // Request task assignment
+    rpc RequestTask (TaskRequest) returns (TaskResponse) {}
+}
+
+message RegisterDeviceRequest {
+    string device_id = 1;
+    DeviceType device_type = 2;
+    repeated Capability capabilities = 3;
+}
+
+message RegisterDeviceResponse {
+    string registration_token = 1;
+    bool success = 2;
+    string error_message = 3;
+}
+
+message DeviceStatusRequest {
+    string device_id = 1;
+    ResourceMetrics resources = 2;
+    repeated TaskStatus running_tasks = 3;
+}
+
+message DeviceStatusResponse {
+    bool acknowledged = 1;
+    string error_message = 2;
+}
+
+message TaskRequest {
+    string device_id = 1;
+    repeated Capability available_capabilities = 2;
+}
+
+message TaskResponse {
+    string task_id = 1;
+    TaskSpec task_spec = 2;
+    bool has_task = 3;
+}
+
+enum DeviceType {
+    DEVICE_TYPE_UNSPECIFIED = 0;
+    DEVICE_TYPE_CORAL = 1;
+    DEVICE_TYPE_GPU = 2;
+    DEVICE_TYPE_CPU = 3;
+}
+
+message Capability {
+    string name = 1;
+    map<string, string> properties = 2;
+}
+
+message ResourceMetrics {
+    double cpu_usage = 1;
+    double memory_usage = 2;
+    double disk_usage = 3;
+    repeated GPUMetrics gpu_metrics = 4;
+}
+
+message GPUMetrics {
+    string gpu_id = 1;
+    double utilization = 2;
+    double memory_usage = 3;
+    double temperature = 4;
+}
+
+message TaskStatus {
+    string task_id = 1;
+    TaskState state = 2;
+    string error_message = 3;
+    map<string, string> metrics = 4;
+}
+
+message TaskSpec {
+    string task_type = 1;
+    bytes payload = 2;
+    map<string, string> config = 3;
+}
+
+enum TaskState {
+    TASK_STATE_UNSPECIFIED = 0;
+    TASK_STATE_PENDING = 1;
+    TASK_STATE_RUNNING = 2;
+    TASK_STATE_COMPLETED = 3;
+    TASK_STATE_FAILED = 4;
+}
