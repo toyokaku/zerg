@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: traefik-basic-auth
+  namespace: default
+type: Opaque
+data:
+  # This will be loaded from secrets file
+  users: ${AUTH_USERS}
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: basic-auth
+  namespace: default
+spec:
+  basicAuth:
+    secret: traefik-basic-auth
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: default
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: secure-headers
+  namespace: default
+spec:
+  headers:
+    frameDeny: true
+    sslRedirect: true
+    browserXssFilter: true
+    contentTypeNosniff: true
+    stsIncludeSubdomains: true
+    stsPreload: true
+    stsSeconds: 31536000
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      - "--api.dashboard=true"
+      - "--log.level=INFO"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.internal.address=:8080"
+      - "--providers.kubernetesingress.ingressclass=traefik"
+      - "--providers.kubernetescrd.allowCrossNamespace=true"
+    ports:
+      web:
+        exposedPort: 80
+      websecure:
+        exposedPort: 443
+      internal:
+        exposedPort: 8080
+    ingressRoute:
+      dashboard:
+        enabled: true
+        annotations: {}
+        labels: {}
+        entryPoints: ["internal"]
+        middlewares: [] 

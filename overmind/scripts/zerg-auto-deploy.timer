@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Zerg Auto-deployment Service periodically
+Requires=zerg-auto-deploy.service
+
+[Timer]
+Unit=zerg-auto-deploy.service
+OnBootSec=1min
+OnUnitActiveSec=15min
+
+[Install]
+WantedBy=timers.target 

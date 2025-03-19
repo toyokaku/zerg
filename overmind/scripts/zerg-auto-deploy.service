@@ -1,0 +1,16 @@
+[Unit]
+Description=Zerg Auto-deployment Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/USER/zerg/overmind/scripts/auto_deploy.sh
+User=USER
+Group=USER
+Environment="GATEWAY_HOST=GATEWAY_IP"
+Environment="GATEWAY_USER=GATEWAY_USER"
+# Uncomment and set if using SSH key authentication
+# Environment="GATEWAY_SSH_KEY=/path/to/ssh/key"
+
+[Install]
+WantedBy=multi-user.target 

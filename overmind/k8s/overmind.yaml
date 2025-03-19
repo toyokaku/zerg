@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: overmind
+  namespace: default
+  labels:
+    app: overmind
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: overmind
+  template:
+    metadata:
+      labels:
+        app: overmind
+      annotations:
+        # Enable NVIDIA runtime
+        nvidia.com/gpu: "2"
+    spec:
+      # Use node with GPUs
+      nodeSelector:
+        gpu: "true"
+      # Tolerations for GPU nodes if needed
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      initContainers:
+      - name: install-deps
+        image: alpine:3.18
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          apk add --no-cache ca-certificates libc6-compat
+          chmod +x /app/overmind
+        volumeMounts:
+        - name: overmind-binary
+          mountPath: /app
+      containers:
+      - name: overmind
+        image: alpine:3.18
+        imagePullPolicy: IfNotPresent
+        command: ["/app/overmind"]
+        ports:
+        - containerPort: 9090
+          name: grpc
+        args:
+        - "--grpc-addr=:9090"
+        - "--nats-url=nats://nats:4222"
+        - "--config=/etc/overmind/config.yaml"
+        env:
+        - name: TZ
+          value: "UTC"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: GOMAXPROCS
+          value: "4"
+        - name: GODEBUG
+          value: "netdns=go"
+        - name: KUBECONFIG
+          value: "/app/.kube/config"
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: "compute,utility"
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+            nvidia.com/gpu: "2"
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+            nvidia.com/gpu: "2"
+        volumeMounts:
+        - name: overmind-binary
+          mountPath: /app
+        - name: containerd-socket
+          mountPath: /run/containerd/containerd.sock
+        - name: kubeconfig
+          mountPath: /app/.kube
+          readOnly: true
+        - name: config-volume
+          mountPath: /etc/overmind
+        - name: nvidia-driver
+          mountPath: /usr/local/nvidia
+          readOnly: true
+      volumes:
+      - name: overmind-binary
+        hostPath:
+          path: /var/lib/containerd/io.containerd.content.v1.content/bin
+          type: Directory
+      - name: containerd-socket
+        hostPath:
+          path: /run/containerd/containerd.sock
+          type: Socket
+      - name: kubeconfig
+        secret:
+          secretName: kubeconfig
+      - name: config-volume
+        configMap:
+          name: overmind-config
+      - name: nvidia-driver
+        hostPath:
+          path: /usr/local/nvidia
+          type: Directory
+      runtimeClassName: nvidia
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: overmind-config
+  namespace: default
+data:
+  config.yaml: |
+    log_level: info
+    grpc_server:
+      timeout: 120s
+    containerd:
+      socket: /run/containerd/containerd.sock
+      namespace: k8s.io
+      runtime: nvidia-container-runtime
+    kubernetes:
+      namespace: default
+      job_ttl: 3600
+      resource_limits:
+        cpu: "1"
+        memory: "2Gi"
+        gpu: "1"
+    nats:
+      url: nats://nats:4222
+      reconnect_wait: 5s
+      max_reconnects: 10
+      jetstream:
+        enabled: true
+        streams:
+          - name: JOBS
+            subjects: ["jobs.>"]
+            storage: file
+    gpu:
+      enabled: true
+      count: 2
+      type: "p100"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: overmind
+  namespace: default
+spec:
+  selector:
+    app: overmind
+  ports:
+  - port: 9090
+    targetPort: 9090
+    name: grpc
+  type: ClusterIP 

@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/toyokaku/zerg/badger/internal/proto";
+
+// Service for retrieving K3s node information
+service NodeService {
+  // Get all nodes in the K3s cluster
+  rpc GetNodes(GetNodesRequest) returns (GetNodesResponse) {}
+  
+  // Ping the server to check connectivity
+  rpc Ping(PingRequest) returns (PingResponse) {}
+  
+  // GetStats returns basic stats from the backend
+  rpc GetStats(StatsRequest) returns (StatsResponse) {}
+}
+
+// Empty request for getting nodes
+message GetNodesRequest {}
+
+// Response containing a list of nodes
+message GetNodesResponse {
+  repeated Node nodes = 1;
+}
+
+// Node represents a K3s node
+message Node {
+  string name = 1;
+  bool is_online = 2;
+  string role = 3;
+  map<string, ResourceInfo> resources = 4;
+  string last_seen = 5; // ISO8601 format
+}
+
+// ResourceInfo contains usage information for a resource
+message ResourceInfo {
+  double used = 1;
+  double total = 2;
+}
+
+// Simple ping request with a message
+message PingRequest {
+  string message = 1;
+}
+
+// Ping response with server timestamp
+message PingResponse {
+  string message = 1;
+  int64 timestamp = 2;
+  int32 ping_count = 3;
+}
+
+// StatsRequest is a request for backend stats
+message StatsRequest {
+  // Empty request
+}
+
+// StatsResponse contains backend stats
+message StatsResponse {
+  string server_name = 1;
+  string version = 2;
+  int64 uptime_seconds = 3;
+  repeated SystemStat stats = 4;
+}
+
+// SystemStat represents a system metric
+message SystemStat {
+  string name = 1;
+  double value = 2;
+  string unit = 3;
+}

@@ -1,0 +1,52 @@
+# Internal routes - no authentication required
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: frontend-internal
+  namespace: default
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: Host(`${INTERNAL_HOST}`)
+    kind: Rule
+    services:
+    - name: frontend
+      port: 8080
+---
+# External routes - with authentication
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: frontend-external
+  namespace: default
+spec:
+  entryPoints:
+    - websecure
+  routes:
+  - match: Host(`${EXTERNAL_HOST}`)
+    kind: Rule
+    services:
+    - name: frontend
+      port: 8080
+    middlewares:
+    - name: basic-auth
+    - name: secure-headers
+---
+# HTTP to HTTPS redirect for external access
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: http-to-https-redirect
+  namespace: default
+spec:
+  entryPoints:
+    - web
+  routes:
+  - match: Host(`${EXTERNAL_HOST}`)
+    kind: Rule
+    middlewares:
+    - name: redirect-https
+    services:
+    - name: noop@internal
+      kind: TraefikService 

@@ -1,0 +1,67 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.16.0'
+        channel: 'stable'
+
+    - name: Install dependencies (Backend)
+      run: |
+        cd badger && go mod download
+        cd ../overmind && go mod download
+
+    - name: Build (Backend)
+      run: |
+        cd badger && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o badger ./cmd
+        cd ../overmind && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o overmind ./cmd
+
+    - name: Install dependencies (Frontend)
+      run: |
+        cd frontend && flutter pub get
+
+    - name: Build (Frontend)
+      run: |
+        cd frontend && flutter build web
+
+    - name: Create secrets file
+      if: github.ref == 'refs/heads/main'
+      env:
+        SECRETS_ENV: ${{ secrets.SECRETS_ENV }}
+      run: |
+        mkdir -p config
+        echo "$SECRETS_ENV" > config/secrets.env
+
+    - name: Deploy to Gateway
+      if: github.ref == 'refs/heads/main'
+      env:
+        GATEWAY_SSH_KEY: ${{ secrets.GATEWAY_SSH_KEY }}
+        GATEWAY_HOST: ${{ secrets.GATEWAY_HOST }}
+        GATEWAY_USER: ${{ secrets.GATEWAY_USER }}
+      run: |
+        # Save SSH key
+        echo "$GATEWAY_SSH_KEY" > /tmp/gateway_ssh_key
+        chmod 600 /tmp/gateway_ssh_key
+        
+        # Make deployment script executable
+        chmod +x scripts/deploy_gateway.sh
+        
+        # Run deployment script
+        ./scripts/deploy_gateway.sh --remote --host "$GATEWAY_HOST" --user "$GATEWAY_USER" --key /tmp/gateway_ssh_key 
