@@ -50,7 +50,7 @@ class GetNodesRequest extends $pb.GeneratedMessage {
 /// Response containing a list of nodes
 class GetNodesResponse extends $pb.GeneratedMessage {
   factory GetNodesResponse({
-    $core.Iterable<Node>? nodes,
+    $core.Iterable<ClusterNode>? nodes,
   }) {
     final $result = create();
     if (nodes != null) {
@@ -63,7 +63,7 @@ class GetNodesResponse extends $pb.GeneratedMessage {
   factory GetNodesResponse.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
 
   static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'GetNodesResponse', package: const $pb.PackageName(_omitMessageNames ? '' : 'proto'), createEmptyInstance: create)
-    ..pc<Node>(1, _omitFieldNames ? '' : 'nodes', $pb.PbFieldType.PM, subBuilder: Node.create)
+    ..pc<ClusterNode>(1, _omitFieldNames ? '' : 'nodes', $pb.PbFieldType.PM, subBuilder: ClusterNode.create)
     ..hasRequiredFields = false
   ;
 
@@ -89,12 +89,12 @@ class GetNodesResponse extends $pb.GeneratedMessage {
   static GetNodesResponse? _defaultInstance;
 
   @$pb.TagNumber(1)
-  $core.List<Node> get nodes => $_getList(0);
+  $core.List<ClusterNode> get nodes => $_getList(0);
 }
 
-/// Node represents a K3s node
-class Node extends $pb.GeneratedMessage {
-  factory Node({
+/// ClusterNode represents a K3s node
+class ClusterNode extends $pb.GeneratedMessage {
+  factory ClusterNode({
     $core.String? name,
     $core.bool? isOnline,
     $core.String? role,
@@ -119,15 +119,15 @@ class Node extends $pb.GeneratedMessage {
     }
     return $result;
   }
-  Node._() : super();
-  factory Node.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
-  factory Node.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
+  ClusterNode._() : super();
+  factory ClusterNode.fromBuffer($core.List<$core.int> i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromBuffer(i, r);
+  factory ClusterNode.fromJson($core.String i, [$pb.ExtensionRegistry r = $pb.ExtensionRegistry.EMPTY]) => create()..mergeFromJson(i, r);
 
-  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'Node', package: const $pb.PackageName(_omitMessageNames ? '' : 'proto'), createEmptyInstance: create)
+  static final $pb.BuilderInfo _i = $pb.BuilderInfo(_omitMessageNames ? '' : 'ClusterNode', package: const $pb.PackageName(_omitMessageNames ? '' : 'proto'), createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'name')
     ..aOB(2, _omitFieldNames ? '' : 'isOnline')
     ..aOS(3, _omitFieldNames ? '' : 'role')
-    ..m<$core.String, ResourceInfo>(4, _omitFieldNames ? '' : 'resources', entryClassName: 'Node.ResourcesEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OM, valueCreator: ResourceInfo.create, valueDefaultOrMaker: ResourceInfo.getDefault, packageName: const $pb.PackageName('proto'))
+    ..m<$core.String, ResourceInfo>(4, _omitFieldNames ? '' : 'resources', entryClassName: 'ClusterNode.ResourcesEntry', keyFieldType: $pb.PbFieldType.OS, valueFieldType: $pb.PbFieldType.OM, valueCreator: ResourceInfo.create, valueDefaultOrMaker: ResourceInfo.getDefault, packageName: const $pb.PackageName('proto'))
     ..aOS(5, _omitFieldNames ? '' : 'lastSeen')
     ..hasRequiredFields = false
   ;
@@ -136,22 +136,22 @@ class Node extends $pb.GeneratedMessage {
   'Using this can add significant overhead to your binary. '
   'Use [GeneratedMessageGenericExtensions.deepCopy] instead. '
   'Will be removed in next major version')
-  Node clone() => Node()..mergeFromMessage(this);
+  ClusterNode clone() => ClusterNode()..mergeFromMessage(this);
   @$core.Deprecated(
   'Using this can add significant overhead to your binary. '
   'Use [GeneratedMessageGenericExtensions.rebuild] instead. '
   'Will be removed in next major version')
-  Node copyWith(void Function(Node) updates) => super.copyWith((message) => updates(message as Node)) as Node;
+  ClusterNode copyWith(void Function(ClusterNode) updates) => super.copyWith((message) => updates(message as ClusterNode)) as ClusterNode;
 
   $pb.BuilderInfo get info_ => _i;
 
   @$core.pragma('dart2js:noInline')
-  static Node create() => Node._();
-  Node createEmptyInstance() => create();
-  static $pb.PbList<Node> createRepeated() => $pb.PbList<Node>();
+  static ClusterNode create() => ClusterNode._();
+  ClusterNode createEmptyInstance() => create();
+  static $pb.PbList<ClusterNode> createRepeated() => $pb.PbList<ClusterNode>();
   @$core.pragma('dart2js:noInline')
-  static Node getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<Node>(create);
-  static Node? _defaultInstance;
+  static ClusterNode getDefault() => _defaultInstance ??= $pb.GeneratedMessage.$_defaultFor<ClusterNode>(create);
+  static ClusterNode? _defaultInstance;
 
   @$pb.TagNumber(1)
   $core.String get name => $_getSZ(0);

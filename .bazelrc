@@ -1,0 +1,40 @@
+# Enable Bzlmod (modern dependency management)
+common --enable_bzlmod
+
+# Build with C++17
+build --cxxopt=-std=c++17
+
+# Use Py3
+build --python_version=PY3
+
+# Define standard --platforms value
+build --platforms=@rules_go//go/toolchain:linux_amd64
+
+# Address sanitizer
+build:asan --strip=never
+build:asan --copt -fsanitize=address
+build:asan --copt -DADDRESS_SANITIZER
+build:asan --copt -O1
+build:asan --copt -g
+build:asan --copt -fno-omit-frame-pointer
+build:asan --linkopt -fsanitize=address
+
+# Use a more sophisticated UI
+build --ui_event_filters=-info,-stdout,-stderr
+build --noshow_progress
+
+# Output colors
+build --color=yes
+
+# Test options
+test --test_output=errors
+test --test_verbose_timeout_warnings=true
+
+# Show stamps and tags in query output
+query --output=label_kind
+
+# Enable cc toolchain resolution
+build --incompatible_enable_cc_toolchain_resolution
+
+# Enable the Go rules
+build --@rules_go//go/config:pure

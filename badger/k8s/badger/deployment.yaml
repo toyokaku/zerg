@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: badger
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: badger
+  template:
+    metadata:
+      labels:
+        app: badger
+    spec:
+      containers:
+        - name: badger
+          image: badger:latest
+          ports:
+            - containerPort: 9090
+          resources:
+            limits:
+              cpu: "0.5"
+              memory: "512Mi" 

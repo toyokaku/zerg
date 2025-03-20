@@ -27,23 +27,61 @@ class _ZergAppState extends State<ZergApp> {
 
   void _initializeGrpcClient() {
     try {
-      // Get server address from environment or use default
-      final serverAddress = const String.fromEnvironment(
-        'BADGER_GRPC_URL', 
-        defaultValue: 'localhost:9090'
-      );
+      debugPrint('Initializing connection to Badger service');
       
-      _grpcClient.initialize(serverAddress);
-      setState(() {
-        _initialized = true;
-      });
+      // Add a retry mechanism
+      int retries = 0;
+      const maxRetries = 3;
       
-      debugPrint('Connected to Badger gRPC server at $serverAddress');
-    } catch (e) {
+      Future<void> tryConnect() async {
+        try {
+          await _grpcClient.initialize();
+          
+          setState(() {
+            _initialized = true;
+            _errorMessage = '';
+          });
+          
+          debugPrint('Successfully connected to Badger service');
+        } catch (e, stackTrace) {
+          retries++;
+          if (retries < maxRetries) {
+            debugPrint('Connection attempt $retries failed: $e. Retrying in 2 seconds...');
+            debugPrint('Stack trace: $stackTrace');
+            await Future.delayed(const Duration(seconds: 2));
+            await tryConnect();
+          } else {
+            setState(() {
+              _errorMessage = 'Failed to connect to Badger after $maxRetries attempts: $e';
+            });
+            debugPrint('Failed to initialize client after $maxRetries attempts: $e');
+            debugPrint('Stack trace: $stackTrace');
+            
+            // Continue with app initialization anyway
+            if (mounted) {
+              setState(() {
+                _initialized = true;
+              });
+            }
+          }
+        }
+      }
+      
+      // Start the connection process
+      tryConnect();
+    } catch (e, stackTrace) {
       setState(() {
-        _errorMessage = 'Failed to connect to Badger: $e';
+        _errorMessage = 'Unexpected error connecting to Badger: $e';
       });
-      debugPrint('Failed to initialize gRPC client: $e');
+      debugPrint('Unexpected error initializing client: $e');
+      debugPrint('Stack trace: $stackTrace');
+      
+      // Continue with app initialization anyway
+      if (mounted) {
+        setState(() {
+          _initialized = true;
+        });
+      }
     }
   }
 

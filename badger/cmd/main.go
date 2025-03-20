@@ -1,28 +1,93 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"flag"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
-	"strings"
+	"sync/atomic"
 	"syscall"
+	"time"
 
-	"github.com/toyokaku/zerg/badger/internal/k3s"
-	"github.com/toyokaku/zerg/badger/internal/proto"
-	"github.com/toyokaku/zerg/badger/internal/service"
+	pb "github.com/zerg/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 var (
 	grpcAddr  = flag.String("grpc-addr", ":9090", "gRPC listen address")
-	webAddr   = flag.String("web-addr", ":8090", "gRPC-web proxy listen address")
-	localMode = flag.Bool("local-mode", false, "Run in local mode without K8s")
+	localMode = flag.Bool("local-mode", false, "Run in local mode with mock data")
 )
+
+// NodeService implements the NodeService gRPC service
+type NodeService struct {
+	pb.UnimplementedNodeServiceServer
+	pingCount int32
+	localMode bool
+}
+
+// GetNodes returns a list of nodes
+func (s *NodeService) GetNodes(ctx context.Context, req *pb.GetNodesRequest) (*pb.GetNodesResponse, error) {
+	// In local mode, return mock data
+	if s.localMode {
+		log.Println("GetNodes called - returning mock data")
+		return &pb.GetNodesResponse{
+			Nodes: []*pb.ClusterNode{
+				{
+					Name:     "node1",
+					IsOnline: true,
+					Role:     "worker",
+					Resources: map[string]*pb.ResourceInfo{
+						"cpu":     {Used: 2.0, Total: 8.0},
+						"memory":  {Used: 4.0, Total: 16.0},
+						"storage": {Used: 100.0, Total: 500.0},
+					},
+					LastSeen: time.Now().Format(time.RFC3339),
+				},
+				{
+					Name:     "node2",
+					IsOnline: true,
+					Role:     "master",
+					Resources: map[string]*pb.ResourceInfo{
+						"cpu":     {Used: 1.0, Total: 4.0},
+						"memory":  {Used: 2.0, Total: 8.0},
+						"storage": {Used: 50.0, Total: 250.0},
+					},
+					LastSeen: time.Now().Format(time.RFC3339),
+				},
+			},
+		}, nil
+	}
+
+	// In normal mode, would collect data from Kubernetes
+	return &pb.GetNodesResponse{Nodes: []*pb.ClusterNode{}}, nil
+}
+
+// Ping responds to ping requests and counts them
+func (s *NodeService) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
+	count := atomic.AddInt32(&s.pingCount, 1)
+	log.Printf("Ping called with message: %s (count: %d)", req.Message, count)
+	return &pb.PingResponse{
+		Message:   "Pong: " + req.Message,
+		Timestamp: time.Now().Unix(),
+		PingCount: count,
+	}, nil
+}
+
+// GetStats returns basic stats about the server
+func (s *NodeService) GetStats(ctx context.Context, req *pb.StatsRequest) (*pb.StatsResponse, error) {
+	log.Println("GetStats called")
+	return &pb.StatsResponse{
+		ServerName:    "Badger Service",
+		Version:       "1.0.0",
+		UptimeSeconds: 300, // Placeholder
+		Stats: []*pb.SystemStat{
+			{Name: "Ping Count", Value: float64(s.pingCount), Unit: "requests"},
+		},
+	}, nil
+}
 
 func main() {
 	flag.Parse()
@@ -32,36 +97,24 @@ func main() {
 	logger.Println("Starting badger service...")
 
 	// Check for local mode from environment
-	if !*localMode && (os.Getenv("LOCAL_MODE") != "" || os.Getenv("NO_K8S") != "" || os.Getenv("DISABLE_K8S") != "") {
+	if !*localMode && (os.Getenv("LOCAL_MODE") != "" || os.Getenv("NO_K8S") != "") {
 		*localMode = true
 		logger.Println("Running in local mode (set by environment variable)")
 	}
 
-	// Create K3s client (optional in local mode)
-	var k3sClient *k3s.Client
-	if !*localMode {
-		logger.Println("Creating K3s client...")
-		var err error
-		k3sClient, err = k3s.NewClient()
-		if err != nil {
-			logger.Printf("Warning: Failed to create K3s client: %v", err)
-		} else {
-			logger.Println("K3s client created")
-		}
+	// Log local mode status
+	if *localMode {
+		logger.Println("Running in local mode with mock data")
 	} else {
-		logger.Println("Skipping K3s client in local mode")
-		k3sClient = &k3s.Client{Disabled: true}
+		logger.Println("Running in normal mode with Kubernetes integration")
 	}
 
-	// Create node service
-	nodeService := service.NewNodeService(k3sClient)
-
-	// Set up gRPC server
-	logger.Printf("Starting gRPC server on %s...\n", *grpcAddr)
+	// Create gRPC server
 	grpcServer := grpc.NewServer()
 
 	// Register services
-	proto.RegisterNodeServiceServer(grpcServer, nodeService)
+	nodeService := &NodeService{localMode: *localMode}
+	pb.RegisterNodeServiceServer(grpcServer, nodeService)
 
 	// Enable reflection for debugging
 	reflection.Register(grpcServer)
@@ -74,57 +127,11 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
+		logger.Printf("gRPC server started on %s", *grpcAddr)
 		if err := grpcServer.Serve(grpcListener); err != nil {
 			logger.Fatalf("Failed to serve gRPC: %v", err)
 		}
 	}()
-	logger.Printf("gRPC server started on %s", *grpcAddr)
-
-	// Set up gRPC-web proxy
-	logger.Printf("Starting gRPC-web proxy on %s...\n", *webAddr)
-	webMux := http.NewServeMux()
-	webMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Handle CORS
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		// Handle gRPC-web requests
-		if strings.Contains(r.URL.Path, "NodeService") {
-			w.Header().Set("Content-Type", "application/json")
-
-			// Get mock data based on the endpoint
-			var responseData []byte
-			switch {
-			case strings.Contains(r.URL.Path, "GetNodes"):
-				responseData = getMockNodesResponse()
-			case strings.Contains(r.URL.Path, "Ping"):
-				responseData = getMockPingResponse()
-			case strings.Contains(r.URL.Path, "GetStats"):
-				responseData = getMockStatsResponse()
-			default:
-				http.Error(w, "Not found", http.StatusNotFound)
-				return
-			}
-			w.Write(responseData)
-			return
-		}
-
-		http.Error(w, "Not found", http.StatusNotFound)
-	})
-
-	// Start web server in a goroutine
-	go func() {
-		if err := http.ListenAndServe(*webAddr, webMux); err != nil {
-			logger.Fatalf("Failed to serve gRPC-web: %v", err)
-		}
-	}()
-	logger.Printf("gRPC-web proxy started on %s", *webAddr)
 
 	// Handle graceful shutdown
 	quit := make(chan os.Signal, 1)
@@ -134,62 +141,4 @@ func main() {
 	logger.Println("Shutting down...")
 	grpcServer.GracefulStop()
 	logger.Println("Badger service stopped")
-}
-
-// Mock response functions
-func getMockNodesResponse() []byte {
-	response := map[string]interface{}{
-		"nodes": []map[string]interface{}{
-			{
-				"name":     "gateway",
-				"isOnline": true,
-				"role":     "master",
-				"resources": map[string]map[string]float64{
-					"cpu":     {"used": 0.3, "total": 4.0},
-					"memory":  {"used": 1.2, "total": 8.0},
-					"storage": {"used": 20.0, "total": 64.0},
-				},
-				"lastSeen": "2024-03-18T22:30:00Z",
-			},
-			{
-				"name":     "compute",
-				"isOnline": true,
-				"role":     "worker",
-				"resources": map[string]map[string]float64{
-					"cpu":     {"used": 2.1, "total": 16.0},
-					"memory":  {"used": 24.0, "total": 64.0},
-					"storage": {"used": 120.0, "total": 500.0},
-					"gpu":     {"used": 1.0, "total": 2.0},
-				},
-				"lastSeen": "2024-03-18T22:30:00Z",
-			},
-		},
-	}
-	data, _ := json.Marshal(response)
-	return data
-}
-
-func getMockPingResponse() []byte {
-	response := map[string]interface{}{
-		"message":   "Pong: Ping from Flutter",
-		"timestamp": 1679177400000,
-		"pingCount": 1,
-	}
-	data, _ := json.Marshal(response)
-	return data
-}
-
-func getMockStatsResponse() []byte {
-	response := map[string]interface{}{
-		"serverName":    "Badger Service",
-		"version":       "1.0.0",
-		"uptimeSeconds": 300,
-		"stats": []map[string]interface{}{
-			{"name": "Ping Count", "value": 1, "unit": "requests"},
-			{"name": "Memory Usage", "value": 0, "unit": "MB"},
-			{"name": "CPU Usage", "value": 0, "unit": "%"},
-		},
-	}
-	data, _ := json.Marshal(response)
-	return data
 }

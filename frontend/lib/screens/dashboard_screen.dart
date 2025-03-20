@@ -11,8 +11,8 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final _grpcClient = GrpcClient();
-  List<Node> _nodes = [];
+  final GrpcClient _grpcClient = GrpcClient();
+  List<ClusterNode> _nodes = [];
   bool _isLoadingNodes = true;
   bool _isLoadingPing = false;
   bool _isLoadingStats = true;
@@ -49,18 +49,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
     
-    try {
-      final response = await _grpcClient.getNodes();
-      setState(() {
-        _nodes = response.nodes;
-        _isLoadingNodes = false;
-      });
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Error loading nodes: $e';
-        _isLoadingNodes = false;
-      });
+    setState(() {
+      _isLoadingNodes = true;
+      _errorMessage = '';
+    });
+    
+    int retries = 0;
+    const maxRetries = 3;
+    
+    Future<bool> tryLoadNodes() async {
+      try {
+        debugPrint('Attempting to load nodes (attempt ${retries + 1})');
+        final response = await _grpcClient.getNodes();
+        
+        setState(() {
+          _nodes = response.nodes;
+          _isLoadingNodes = false;
+          _errorMessage = '';
+        });
+        
+        debugPrint('Successfully loaded ${_nodes.length} nodes');
+        return true;
+      } catch (e) {
+        retries++;
+        if (retries < maxRetries) {
+          debugPrint('Loading nodes attempt $retries failed: $e. Retrying in 1 second...');
+          await Future.delayed(const Duration(seconds: 1));
+          return tryLoadNodes();
+        } else {
+          setState(() {
+            _errorMessage = 'Error loading nodes after $maxRetries attempts: $e';
+            _isLoadingNodes = false;
+          });
+          debugPrint('Failed to load nodes after $maxRetries attempts: $e');
+          return false;
+        }
+      }
     }
+    
+    await tryLoadNodes();
   }
 
   Future<void> _loadStats() async {
@@ -379,7 +406,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildNodeCard(Node node) {
+  Widget _buildNodeCard(ClusterNode node) {
     // Get resources
     final cpuInfo = node.resources['cpu'];
     final memoryInfo = node.resources['memory'];

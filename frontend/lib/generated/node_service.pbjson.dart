@@ -26,29 +26,30 @@ final $typed_data.Uint8List getNodesRequestDescriptor = $convert.base64Decode(
 const GetNodesResponse$json = {
   '1': 'GetNodesResponse',
   '2': [
-    {'1': 'nodes', '3': 1, '4': 3, '5': 11, '6': '.proto.Node', '10': 'nodes'},
+    {'1': 'nodes', '3': 1, '4': 3, '5': 11, '6': '.proto.ClusterNode', '10': 'nodes'},
   ],
 };
 
 /// Descriptor for `GetNodesResponse`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List getNodesResponseDescriptor = $convert.base64Decode(
-    'ChBHZXROb2Rlc1Jlc3BvbnNlEiEKBW5vZGVzGAEgAygLMgsucHJvdG8uTm9kZVIFbm9kZXM=');
+    'ChBHZXROb2Rlc1Jlc3BvbnNlEigKBW5vZGVzGAEgAygLMhIucHJvdG8uQ2x1c3Rlck5vZGVSBW'
+    '5vZGVz');
 
-@$core.Deprecated('Use nodeDescriptor instead')
-const Node$json = {
-  '1': 'Node',
+@$core.Deprecated('Use clusterNodeDescriptor instead')
+const ClusterNode$json = {
+  '1': 'ClusterNode',
   '2': [
     {'1': 'name', '3': 1, '4': 1, '5': 9, '10': 'name'},
     {'1': 'is_online', '3': 2, '4': 1, '5': 8, '10': 'isOnline'},
     {'1': 'role', '3': 3, '4': 1, '5': 9, '10': 'role'},
-    {'1': 'resources', '3': 4, '4': 3, '5': 11, '6': '.proto.Node.ResourcesEntry', '10': 'resources'},
+    {'1': 'resources', '3': 4, '4': 3, '5': 11, '6': '.proto.ClusterNode.ResourcesEntry', '10': 'resources'},
     {'1': 'last_seen', '3': 5, '4': 1, '5': 9, '10': 'lastSeen'},
   ],
-  '3': [Node_ResourcesEntry$json],
+  '3': [ClusterNode_ResourcesEntry$json],
 };
 
-@$core.Deprecated('Use nodeDescriptor instead')
-const Node_ResourcesEntry$json = {
+@$core.Deprecated('Use clusterNodeDescriptor instead')
+const ClusterNode_ResourcesEntry$json = {
   '1': 'ResourcesEntry',
   '2': [
     {'1': 'key', '3': 1, '4': 1, '5': 9, '10': 'key'},
@@ -57,13 +58,13 @@ const Node_ResourcesEntry$json = {
   '7': {'7': true},
 };
 
-/// Descriptor for `Node`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List nodeDescriptor = $convert.base64Decode(
-    'CgROb2RlEhIKBG5hbWUYASABKAlSBG5hbWUSGwoJaXNfb25saW5lGAIgASgIUghpc09ubGluZR'
-    'ISCgRyb2xlGAMgASgJUgRyb2xlEjgKCXJlc291cmNlcxgEIAMoCzIaLnByb3RvLk5vZGUuUmVz'
-    'b3VyY2VzRW50cnlSCXJlc291cmNlcxIbCglsYXN0X3NlZW4YBSABKAlSCGxhc3RTZWVuGlEKDl'
-    'Jlc291cmNlc0VudHJ5EhAKA2tleRgBIAEoCVIDa2V5EikKBXZhbHVlGAIgASgLMhMucHJvdG8u'
-    'UmVzb3VyY2VJbmZvUgV2YWx1ZToCOAE=');
+/// Descriptor for `ClusterNode`. Decode as a `google.protobuf.DescriptorProto`.
+final $typed_data.Uint8List clusterNodeDescriptor = $convert.base64Decode(
+    'CgtDbHVzdGVyTm9kZRISCgRuYW1lGAEgASgJUgRuYW1lEhsKCWlzX29ubGluZRgCIAEoCFIIaX'
+    'NPbmxpbmUSEgoEcm9sZRgDIAEoCVIEcm9sZRI/CglyZXNvdXJjZXMYBCADKAsyIS5wcm90by5D'
+    'bHVzdGVyTm9kZS5SZXNvdXJjZXNFbnRyeVIJcmVzb3VyY2VzEhsKCWxhc3Rfc2VlbhgFIAEoCV'
+    'IIbGFzdFNlZW4aUQoOUmVzb3VyY2VzRW50cnkSEAoDa2V5GAEgASgJUgNrZXkSKQoFdmFsdWUY'
+    'AiABKAsyEy5wcm90by5SZXNvdXJjZUluZm9SBXZhbHVlOgI4AQ==');
 
 @$core.Deprecated('Use resourceInfoDescriptor instead')
 const ResourceInfo$json = {

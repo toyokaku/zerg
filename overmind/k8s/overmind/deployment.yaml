@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: overmind
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: overmind
+  template:
+    metadata:
+      labels:
+        app: overmind
+    spec:
+      containers:
+        - name: overmind
+          image: overmind:latest
+          ports:
+            - containerPort: 9091
+          resources:
+            limits:
+              cpu: "1.0"
+              memory: "1Gi" 

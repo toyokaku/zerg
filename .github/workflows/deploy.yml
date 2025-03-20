@@ -12,10 +12,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
+    - name: Set up Bazel
+      uses: bazelbuild/setup-bazelisk@v1
 
     - name: Set up Flutter
       uses: subosito/flutter-action@v2
@@ -23,23 +21,13 @@ jobs:
         flutter-version: '3.16.0'
         channel: 'stable'
 
-    - name: Install dependencies (Backend)
+    - name: Build all targets
       run: |
-        cd badger && go mod download
-        cd ../overmind && go mod download
+        bazel build //...
 
-    - name: Build (Backend)
+    - name: Run tests
       run: |
-        cd badger && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o badger ./cmd
-        cd ../overmind && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o overmind ./cmd
-
-    - name: Install dependencies (Frontend)
-      run: |
-        cd frontend && flutter pub get
-
-    - name: Build (Frontend)
-      run: |
-        cd frontend && flutter build web
+        bazel test //...
 
     - name: Create secrets file
       if: github.ref == 'refs/heads/main'
@@ -60,8 +48,5 @@ jobs:
         echo "$GATEWAY_SSH_KEY" > /tmp/gateway_ssh_key
         chmod 600 /tmp/gateway_ssh_key
         
-        # Make deployment script executable
-        chmod +x scripts/deploy_gateway.sh
-        
-        # Run deployment script
-        ./scripts/deploy_gateway.sh --remote --host "$GATEWAY_HOST" --user "$GATEWAY_USER" --key /tmp/gateway_ssh_key 
+        # Deploy using Bazel
+        bazel run //:all_deployments -- --cluster=minikube 

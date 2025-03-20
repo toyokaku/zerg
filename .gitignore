@@ -14,9 +14,6 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Dependency directories (remove the comment below to include it)
-/backend/vendor/
-
 # Go workspace file
 go.work
 go.work.sum
@@ -25,19 +22,19 @@ go.work.sum
 .env
 
 # Flutter
-/frontend/.dart_tool/
-/frontend/.flutter-plugins
-/frontend/.flutter-plugins-dependencies
-/frontend/.packages
-/frontend/build/
-/frontend/.pub-cache/
-/frontend/.pub/
-/frontend/coverage/
-/frontend/.idea/
-/frontend/.vscode/
-/frontend/*.iml
-/frontend/*.ipr
-/frontend/*.iws
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.packages
+frontend/build/
+frontend/.pub-cache/
+frontend/.pub/
+frontend/coverage/
+frontend/.idea/
+frontend/.vscode/
+frontend/*.iml
+frontend/*.ipr
+frontend/*.iws
 
 # Kubernetes
 kubeconfig
@@ -71,3 +68,10 @@ config/secrets.env
 # Temporary files
 build/
 logs/
+
+# Bazel
+bazel-bin/
+bazel-out/
+bazel-testlogs/
+bazel-workspace/
+bazel-workspace/

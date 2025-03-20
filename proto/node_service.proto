@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = "github.com/toyokaku/zerg/badger/internal/proto";
+option go_package = "github.com/zerg/proto";
 
 // Service for retrieving K3s node information
 service NodeService {
@@ -21,11 +21,11 @@ message GetNodesRequest {}
 
 // Response containing a list of nodes
 message GetNodesResponse {
-  repeated Node nodes = 1;
+  repeated ClusterNode nodes = 1;
 }
 
-// Node represents a K3s node
-message Node {
+// ClusterNode represents a K3s node
+message ClusterNode {
   string name = 1;
   bool is_online = 2;
   string role = 3;

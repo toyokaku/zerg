@@ -19,51 +19,38 @@ zerg/
 │       ├── k3s/            # K3s client interface
 │       ├── proto/          # Protocol buffer definitions
 │       └── service/        # Service implementations
-├── build/                  # Build artifacts
 ├── frontend/               # Frontend web application
 ├── k3s/                    # K3s manifests
 │   ├── badger/             # Badger deployment manifests
 │   ├── core/               # Core infrastructure manifests
 │   ├── frontend/           # Frontend deployment manifests 
 │   └── ingress/            # Ingress configuration
-├── logs/                   # Log files
+├── overmind/               # Overmind service source code
 ├── proto/                  # Protocol buffer definition files
-├── scripts/                # Deployment scripts
-└── tools/                  # Development tools
-    └── scripts/            # Build and test scripts
+└── scripts/                # Development scripts
 ```
 
 ## Quick Start
 
-### Building and Running the Badger Service
+### Prerequisites
+
+- Bazel 6.0 or higher
+- Go 1.21 or higher
+- Flutter 3.16.0 or higher
+- Protocol Buffers compiler (protoc)
+- K3s cluster
+
+### Building and Running Services
 
 ```bash
-# Generate protocol buffers and build the badger service
-./tools/scripts/build_proto.sh
+# Build all services
+bazel build //...
 
-# Run the badger service in local mode
-./build/badger --local-mode
-```
+# Run tests
+bazel test //...
 
-### Building and Running the Frontend
-
-```bash
-# Navigate to the frontend directory
-cd frontend
-
-# Generate proto code
-export PATH="$PATH":"$HOME/.pub-cache/bin"
-./generate_protos.sh
-
-# Run in development mode
-flutter run -d chrome
-```
-
-### Testing the Badger Service
-
-```bash
-# Run the test script to build, start and test the badger service
-./tools/scripts/test_service.sh
+# Start services in local mode
+./scripts/local_dev.sh
 ```
 
 ### Testing with grpcurl
@@ -89,31 +76,35 @@ grpcurl -plaintext -d '{}' localhost:9090 proto.NodeService/GetNodes
 For production deployment:
 
 ```bash
-# Build and deploy in production mode
-./scripts/deploy_gateway.sh -h your-gateway-host.example.com
+# Apply secrets
+./scripts/apply-secrets.sh
+
+# Deploy all services
+bazel run //k3s:all_deployments -- --cluster=minikube
 ```
 
 ## Development
 
 ### Requirements
 
-- Go 1.18 or higher
+- Bazel 6.0 or higher
+- Go 1.21 or higher
+- Flutter 3.16.0 or higher
 - Protocol Buffers compiler (protoc)
-- Go Protocol Buffers plugins:
-  ```bash
-  go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-  go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-  ```
-- Flutter 3.0 or higher for frontend development
-- Dart Protocol Buffers plugin:
-  ```bash
-  dart pub global activate protoc_plugin
-  ```
 
 ### Workflow
 
 1. Make changes to the protocol buffer definitions in the `proto/` directory
-2. Run `./tools/scripts/build_proto.sh` to generate code for the backend
-3. For the frontend: `cd frontend && ./generate_protos.sh` to generate Dart code
-4. Test your changes with `./tools/scripts/test_service.sh`
-5. Test the frontend with `cd frontend && flutter run -d chrome`
+2. Build and test your changes:
+   ```bash
+   bazel build //...
+   bazel test //...
+   ```
+3. Run services locally:
+   ```bash
+   ./scripts/local_dev.sh
+   ```
+4. Deploy changes:
+   ```bash
+   bazel run //k3s:all_deployments -- --cluster=minikube
+   ```
