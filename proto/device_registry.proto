@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/toyokaku/zerg/proto";
+
+// DeviceRegistryService handles device management, heartbeats, and coordination
+service DeviceRegistryService {
+  // Register a new device to the mesh
+  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse) {}
+  
+  // Update device status and heartbeat
+  rpc UpdateDeviceStatus(UpdateDeviceStatusRequest) returns (UpdateDeviceStatusResponse) {}
+  
+  // Get detailed information about a device
+  rpc GetDeviceInfo(GetDeviceInfoRequest) returns (GetDeviceInfoResponse) {}
+  
+  // List all registered devices
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse) {}
+  
+  // Remove a device from the mesh
+  rpc RemoveDevice(RemoveDeviceRequest) returns (RemoveDeviceResponse) {}
+}
+
+// Device represents a physical device in the Zerg mesh
+message Device {
+  string id = 1;
+  string name = 2;
+  string ip_address = 3;
+  bool is_online = 4;
+  DeviceType type = 5;
+  DeviceStatus status = 6;
+  map<string, ResourceInfo> resources = 7;
+  int64 last_heartbeat = 8; // Unix timestamp in milliseconds
+  map<string, string> capabilities = 9; // Map of capability name to version/details
+}
+
+// DeviceType represents the class of device
+enum DeviceType {
+  DEVICE_TYPE_UNSPECIFIED = 0;
+  DEVICE_TYPE_CONTROLLER = 1; // Raspberry Pi, Vim3, etc.
+  DEVICE_TYPE_COMPUTE = 2;    // GPU/TPU enabled devices
+  DEVICE_TYPE_STORAGE = 3;    // Large storage devices
+  DEVICE_TYPE_MOBILE = 4;     // Phones, tablets
+  DEVICE_TYPE_DESKTOP = 5;    // Desktop computers
+}
+
+// DeviceStatus represents the current operational status
+enum DeviceStatus {
+  DEVICE_STATUS_UNKNOWN = 0;
+  DEVICE_STATUS_ONLINE = 1;
+  DEVICE_STATUS_OFFLINE = 2;
+  DEVICE_STATUS_SLEEPING = 3;
+  DEVICE_STATUS_ERROR = 4;
+}
+
+// ResourceInfo contains usage information for a resource
+message ResourceInfo {
+  double used = 1;
+  double total = 2;
+  string unit = 3;
+}
+
+// RegisterDeviceRequest registers a new device
+message RegisterDeviceRequest {
+  string name = 1;
+  string ip_address = 2;
+  DeviceType type = 3;
+  map<string, ResourceInfo> resources = 4;
+  map<string, string> capabilities = 5;
+}
+
+// RegisterDeviceResponse contains the registered device info
+message RegisterDeviceResponse {
+  Device device = 1;
+  string auth_token = 2; // Token for future authentication
+}
+
+// UpdateDeviceStatusRequest updates device status and heartbeat
+message UpdateDeviceStatusRequest {
+  string device_id = 1;
+  DeviceStatus status = 2;
+  map<string, ResourceInfo> resources = 3; // Updated resource usage
+  map<string, string> capabilities = 4; // Any capability changes
+}
+
+// UpdateDeviceStatusResponse contains the updated device info
+message UpdateDeviceStatusResponse {
+  Device device = 1;
+}
+
+// GetDeviceInfoRequest gets detailed device info
+message GetDeviceInfoRequest {
+  string device_id = 1;
+}
+
+// GetDeviceInfoResponse contains detailed device info
+message GetDeviceInfoResponse {
+  Device device = 1;
+}
+
+// ListDevicesRequest lists registered devices with optional filtering
+message ListDevicesRequest {
+  DeviceType filter_type = 1;
+  bool only_online = 2;
+  string capability_filter = 3; // Filter by capability
+}
+
+// ListDevicesResponse contains a list of devices
+message ListDevicesResponse {
+  repeated Device devices = 1;
+}
+
+// RemoveDeviceRequest removes a device from the registry
+message RemoveDeviceRequest {
+  string device_id = 1;
+}
+
+// RemoveDeviceResponse confirms device removal
+message RemoveDeviceResponse {
+  bool success = 1;
+  string message = 2;
+} 

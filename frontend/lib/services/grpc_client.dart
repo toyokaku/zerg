@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:grpc/grpc.dart';
-import 'package:grpc/grpc_web.dart';
+// Import the right client based on platform
+// ignore: undefined_symbol
+import 'web_grpc_client.dart' if (dart.library.io) 'empty_web_client.dart';
 import 'package:fixnum/fixnum.dart';
 
 import '../generated/node_service.pbgrpc.dart';
@@ -17,13 +20,12 @@ class GrpcClient {
   
   GrpcClient._internal();
   
-  static const String _defaultHost = 'localhost';
+  // Default host settings - will be determined at runtime
+  String _host = 'localhost';
   static const int _defaultPort = 8090;
   
   // For native clients
   ClientChannel? _channel;
-  // For web clients
-  GrpcWebClientChannel? _webChannel;
   
   NodeServiceClient? _nodeClient;
   bool _initialized = false;
@@ -38,21 +40,20 @@ class GrpcClient {
         return;
       }
 
+      // Determine appropriate host based on platform
+      _configureHostForPlatform();
+      
       if (kIsWeb) {
         debugPrint('Initializing GrpcClient for Web using gRPC-Web');
         
-        // Web uses GrpcWebClientChannel
-        _webChannel = GrpcWebClientChannel.xhr(
-          Uri.parse('http://$_defaultHost:$_defaultPort'),
-        );
-        
-        _nodeClient = NodeServiceClient(_webChannel!);
+        // Web implementation is handled by web_grpc_client.dart
+        _nodeClient = createWebNodeClient(_host, _defaultPort);
       } else {
-        debugPrint('Initializing GrpcClient for Native');
+        debugPrint('Initializing GrpcClient for Native on ${_getPlatformName()}');
         
         // Native platforms use ClientChannel
         _channel = ClientChannel(
-          _defaultHost,
+          _host,
           port: _defaultPort,
           options: const ChannelOptions(
             credentials: ChannelCredentials.insecure(),
@@ -70,7 +71,7 @@ class GrpcClient {
       
       while (retries < maxRetries && !connected) {
         try {
-          debugPrint('Testing connection attempt ${retries + 1}/$maxRetries');
+          debugPrint('Testing connection attempt ${retries + 1}/$maxRetries to $_host:$_defaultPort');
           
           final request = node_proto.PingRequest()..message = 'Test connection';
           final pingResponse = await _nodeClient!.ping(
@@ -106,11 +107,57 @@ class GrpcClient {
     }
   }
   
+  // Configure the appropriate host based on the platform
+  void _configureHostForPlatform() {
+    if (kIsWeb) {
+      // Web client typically connects to the origin server
+      _host = 'localhost';
+    } else {
+      if (!kIsWeb) {
+        // Platform-specific host configurations
+        try {
+          if (Platform.isAndroid) {
+            // Android emulator needs special IP to access host machine
+            _host = '10.0.2.2'; // Special IP for Android emulator to access host machine
+            debugPrint('Configured for Android: Using emulator host $_host');
+          } else if (Platform.isLinux) {
+            // Linux just uses localhost
+            _host = 'localhost';
+            debugPrint('Configured for Linux: Using host $_host');
+          } else {
+            // Default fallback
+            _host = 'localhost';
+            debugPrint('Using default host $_host for ${_getPlatformName()}');
+          }
+        } catch (e) {
+          // In case Platform is not available
+          _host = 'localhost';
+          debugPrint('Platform detection failed, using default host $_host');
+        }
+      }
+    }
+  }
+  
+  // Helper to get a readable platform name for logs
+  String _getPlatformName() {
+    if (kIsWeb) return 'Web';
+    try {
+      if (Platform.isAndroid) return 'Android';
+      if (Platform.isIOS) return 'iOS';
+      if (Platform.isLinux) return 'Linux';
+      if (Platform.isWindows) return 'Windows';
+      if (Platform.isMacOS) return 'macOS';
+      if (Platform.isFuchsia) return 'Fuchsia';
+    } catch (e) {
+      return 'Unknown (Platform detection failed)';
+    }
+    return 'Unknown';
+  }
+  
   /// Close the gRPC channel
   void dispose() {
     _channel?.shutdown();
     _channel = null;
-    _webChannel = null;
     _nodeClient = null;
     _initialized = false;
   }
@@ -217,6 +264,13 @@ class GrpcClient {
     }
   }
   
+  // Check if the client is initialized
+  void _checkInitialized() {
+    if (!_initialized) {
+      throw Exception('GrpcClient not initialized. Call initialize() first.');
+    }
+  }
+  
   // Helper method to create mock nodes response for testing
   node_proto.GetNodesResponse _createMockNodesResponse() {
     final response = node_proto.GetNodesResponse();
@@ -259,17 +313,10 @@ class GrpcClient {
     node2.resources['cpu'] = cpuResource2;
     node2.resources['memory'] = memResource2;
     
-    // Add both nodes to response
+    // Add nodes to response
     response.nodes.add(node1);
     response.nodes.add(node2);
     
     return response;
-  }
-  
-  // Helper method to verify initialization
-  void _checkInitialized() {
-    if (!_initialized || _nodeClient == null) {
-      throw StateError('GrpcClient not initialized. Call initialize() first.');
-    }
   }
 }

@@ -4,6 +4,7 @@ go 1.21.0
 
 // Dependencies will be managed through Bazel's MODULE.bazel
 require (
+	github.com/google/uuid v1.3.1
 	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.31.0
 )

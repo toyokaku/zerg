@@ -1,74 +1,87 @@
-# Zerg - K3s Cluster Manager
+# Zerg - Distributed Compute and Media Orchestration Platform
 
-This repository contains the Zerg project, a suite of services for managing and monitoring K3s clusters.
+A cross-device distributed compute and media orchestration platform that allows trusted devices to collaborate and share compute, storage, and smart home functionalities.
+
+## Overview
+
+Zerg is a distributed platform that enables devices registered to the same mesh to coordinate tasks like AI inference, media sharing, photo storage, and more. Each device installs the Zerg app, which includes a Flutter-based frontend UI and a Go-based backend agent compiled into a single binary.
 
 ## Components
 
-- **Badger**: A gRPC service that provides node information and metrics from the K3s cluster
-- **Frontend**: A web interface for monitoring and managing the K3s cluster
-- **Gateway**: A Traefik-based gateway for routing traffic to services
+- **Device Registry Service**: Manages device registration, heartbeats, and capabilities
+- **Task Router**: Distributed task scheduler and executor
+- **Filesystem Service**: Cross-device file access and synchronization
+- **Frontend**: Flutter-based UI for monitoring and managing the device mesh
+- **Extensions**:
+  - **Overmind**: AI compute extension for devices with GPUs/TPUs
+  - **Media**: Media streaming and transcoding extension
 
 ## Project Structure
 
 ```
 zerg/
-├── badger/                 # Badger service source code
+├── badger/                 # Controller service (handles device coordination)
 │   ├── cmd/                # Command-line entry points
-│   │   └── badger/         # Main badger service
-│   └── internal/           # Internal packages
-│       ├── k3s/            # K3s client interface
-│       ├── proto/          # Protocol buffer definitions
-│       └── service/        # Service implementations
-├── frontend/               # Frontend web application
-├── k3s/                    # K3s manifests
-│   ├── badger/             # Badger deployment manifests
-│   ├── core/               # Core infrastructure manifests
-│   ├── frontend/           # Frontend deployment manifests 
-│   └── ingress/            # Ingress configuration
-├── overmind/               # Overmind service source code
-├── proto/                  # Protocol buffer definition files
-└── scripts/                # Development scripts
+│   └── internal/           # Service implementations
+├── frontend/               # Flutter-based UI application
+│   └── lib/                # Frontend code
+├── overmind/               # AI compute extension
+├── proto/                  # Protocol buffer definitions
+│   ├── device_registry.proto  # Device registry service
+│   ├── task_router.proto      # Task router service
+│   └── filesystem.proto       # Filesystem service
+└── scripts/                # Development and deployment scripts
 ```
+
+## Key Features
+
+### Shared Photo System
+
+- All devices running Zerg can save photos to `//photo/` directory
+- Photos are automatically indexed and exposed to the mesh
+- Target devices with storage receive synced copies under `//backup/`
+- Any device can browse shared photos via the mesh
+
+### Device Management
+
+- Devices register with the mesh and maintain heartbeats
+- Each device advertises its capabilities (GPU, storage, etc.)
+- Tasks are routed to devices based on their capabilities
+- Devices can be monitored through the UI dashboard
 
 ## Quick Start
 
 ### Prerequisites
 
-- Bazel 6.0 or higher
 - Go 1.21 or higher
 - Flutter 3.16.0 or higher
 - Protocol Buffers compiler (protoc)
-- K3s cluster
 
-### Building and Running Services
+### Building and Running
 
 ```bash
-# Build all services
-bazel build //...
+# Build the backend
+go build -o zerg ./badger/cmd/badger
 
-# Run tests
-bazel test //...
+# Run the controller daemon
+./zerg --port=9090
 
-# Start services in local mode
-./scripts/local_dev.sh
+# Build and run the Flutter frontend
+cd frontend
+flutter run
 ```
 
-### Testing with grpcurl
+## Development
 
-If you have [grpcurl](https://github.com/fullstorydev/grpcurl) installed:
+### Generating Protocol Buffers
 
 ```bash
-# List available services
-grpcurl -plaintext localhost:9090 list
+# Generate Go code
+protoc --go_out=. --go-grpc_out=. proto/*.proto
 
-# Test the Ping method
-grpcurl -plaintext -d '{"message":"Test ping"}' localhost:9090 proto.NodeService/Ping
-
-# Get server stats
-grpcurl -plaintext -d '{}' localhost:9090 proto.NodeService/GetStats
-
-# Get nodes (empty in local mode)
-grpcurl -plaintext -d '{}' localhost:9090 proto.NodeService/GetNodes
+# Generate Dart code for Flutter
+cd frontend
+dart run build_runner build
 ```
 
 ## Deployment
@@ -79,32 +92,6 @@ For production deployment:
 # Apply secrets
 ./scripts/apply-secrets.sh
 
-# Deploy all services
-bazel run //k3s:all_deployments -- --cluster=minikube
+# Build and deploy
+go build -o zerg ./badger/cmd/badger
 ```
-
-## Development
-
-### Requirements
-
-- Bazel 6.0 or higher
-- Go 1.21 or higher
-- Flutter 3.16.0 or higher
-- Protocol Buffers compiler (protoc)
-
-### Workflow
-
-1. Make changes to the protocol buffer definitions in the `proto/` directory
-2. Build and test your changes:
-   ```bash
-   bazel build //...
-   bazel test //...
-   ```
-3. Run services locally:
-   ```bash
-   ./scripts/local_dev.sh
-   ```
-4. Deploy changes:
-   ```bash
-   bazel run //k3s:all_deployments -- --cluster=minikube
-   ```

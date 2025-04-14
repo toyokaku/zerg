@@ -1,0 +1,288 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/toyokaku/zerg/proto";
+
+// FilesystemService handles file operations across devices
+service FilesystemService {
+  // List files in a directory across all devices or on a specific device
+  rpc ListFiles(ListFilesRequest) returns (ListFilesResponse) {}
+  
+  // Get information about a specific file
+  rpc GetFileInfo(GetFileInfoRequest) returns (GetFileInfoResponse) {}
+  
+  // Read a file (small files)
+  rpc ReadFile(ReadFileRequest) returns (ReadFileResponse) {}
+  
+  // Write a file (small files)
+  rpc WriteFile(WriteFileRequest) returns (WriteFileResponse) {}
+  
+  // Stream a file (large files)
+  rpc StreamFile(StreamFileRequest) returns (stream FileChunk) {}
+  
+  // Upload a file in chunks (large files)
+  rpc UploadFile(stream FileChunk) returns (UploadFileResponse) {}
+  
+  // Create a directory
+  rpc CreateDirectory(CreateDirectoryRequest) returns (CreateDirectoryResponse) {}
+  
+  // Delete a file or directory
+  rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+  
+  // Move/rename a file or directory
+  rpc Move(MoveRequest) returns (MoveResponse) {}
+  
+  // Search for files across devices
+  rpc SearchFiles(SearchFilesRequest) returns (SearchFilesResponse) {}
+  
+  // Synchronize files between devices
+  rpc SyncFiles(SyncFilesRequest) returns (SyncFilesResponse) {}
+  
+  // Get storage stats for devices
+  rpc GetStorageStats(GetStorageStatsRequest) returns (GetStorageStatsResponse) {}
+  
+  // Monitor file changes
+  rpc WatchChanges(WatchChangesRequest) returns (WatchChangesResponse) {}
+  
+  // Stop watching file changes
+  rpc StopWatching(StopWatchingRequest) returns (StopWatchingResponse) {}
+  
+  // Stream file change events
+  rpc WatchFileEvents(WatchChangesRequest) returns (stream FileChangeEvent) {}
+}
+
+// FileInfo contains metadata about a file
+message FileInfo {
+  string path = 1;
+  string name = 2;
+  int64 size = 3;
+  bool is_directory = 4;
+  int64 modified_time = 5;  // Unix timestamp in milliseconds
+  string device_id = 6;     // ID of the device where the file resides
+  string mime_type = 7;
+  map<string, string> metadata = 8;  // Additional metadata (EXIF, tags, etc.)
+  repeated string tags = 9;
+}
+
+// FileChunk represents a part of a file for streaming
+message FileChunk {
+  string file_path = 1;
+  bytes data = 2;
+  int64 offset = 3;
+  bool last_chunk = 4;
+}
+
+// FileChangeEvent indicates a change to the filesystem
+message FileChangeEvent {
+  string path = 1;
+  FileChangeType change_type = 2;
+  FileInfo file_info = 3;
+  string device_id = 4;
+  int64 timestamp = 5;  // Unix timestamp in milliseconds
+}
+
+// FileChangeType represents types of file changes
+enum FileChangeType {
+  FILE_CHANGE_TYPE_UNSPECIFIED = 0;
+  FILE_CHANGE_TYPE_CREATED = 1;
+  FILE_CHANGE_TYPE_MODIFIED = 2;
+  FILE_CHANGE_TYPE_DELETED = 3;
+  FILE_CHANGE_TYPE_MOVED = 4;
+}
+
+// StorageStats contains storage usage information
+message StorageStats {
+  string device_id = 1;
+  int64 total_bytes = 2;
+  int64 used_bytes = 3;
+  int64 available_bytes = 4;
+  int64 photo_bytes = 5;  // Space used by photos
+  int64 media_bytes = 6;  // Space used by media
+  int64 other_bytes = 7;  // Space used by other files
+}
+
+// ListFilesRequest requests a directory listing
+message ListFilesRequest {
+  string path = 1;
+  string device_id = 2;  // Empty for union view across all devices
+  bool recursive = 3;
+  int32 max_depth = 4;
+  bool include_hidden = 5;
+  int32 limit = 6;
+  int32 offset = 7;
+}
+
+// ListFilesResponse contains a directory listing
+message ListFilesResponse {
+  repeated FileInfo files = 1;
+  int32 total_count = 2;
+}
+
+// GetFileInfoRequest gets info about a specific file
+message GetFileInfoRequest {
+  string path = 1;
+  string device_id = 2;  // Optional, specific device to query
+}
+
+// GetFileInfoResponse contains file info
+message GetFileInfoResponse {
+  FileInfo file_info = 1;
+}
+
+// ReadFileRequest reads a small file's contents
+message ReadFileRequest {
+  string path = 1;
+  string device_id = 2;  // Optional, specific device to read from
+  int64 offset = 3;      // Optional, start reading from this offset
+  int32 max_size = 4;    // Maximum bytes to read
+}
+
+// ReadFileResponse contains file contents
+message ReadFileResponse {
+  bytes data = 1;
+  int64 total_size = 2;  // Total file size
+}
+
+// WriteFileRequest writes data to a file
+message WriteFileRequest {
+  string path = 1;
+  bytes data = 2;
+  bool append = 3;     // Whether to append or overwrite
+  string device_id = 4;  // Optional target device
+}
+
+// WriteFileResponse confirms the write operation
+message WriteFileResponse {
+  bool success = 1;
+  string message = 2;
+  int64 bytes_written = 3;
+}
+
+// StreamFileRequest requests streaming a file
+message StreamFileRequest {
+  string path = 1;
+  string device_id = 2;  // Optional, specific device to stream from
+  int64 offset = 3;      // Optional, start streaming from this offset
+  int32 chunk_size = 4;  // Desired chunk size
+}
+
+// UploadFileResponse confirms a completed upload
+message UploadFileResponse {
+  bool success = 1;
+  string message = 2;
+  string path = 3;
+  int64 size = 4;
+}
+
+// CreateDirectoryRequest creates a new directory
+message CreateDirectoryRequest {
+  string path = 1;
+  string device_id = 2;  // Optional target device
+  bool recursive = 3;    // Whether to create parent directories
+}
+
+// CreateDirectoryResponse confirms directory creation
+message CreateDirectoryResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// DeleteRequest deletes a file or directory
+message DeleteRequest {
+  string path = 1;
+  string device_id = 2;  // Optional target device
+  bool recursive = 3;    // Whether to recursively delete directories
+}
+
+// DeleteResponse confirms the deletion
+message DeleteResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// MoveRequest moves or renames a file/directory
+message MoveRequest {
+  string source_path = 1;
+  string destination_path = 2;
+  string source_device_id = 3;      // Optional source device
+  string destination_device_id = 4;  // Optional destination device
+  bool overwrite = 5;               // Whether to overwrite existing files
+}
+
+// MoveResponse confirms the move operation
+message MoveResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// SearchFilesRequest searches for files across devices
+message SearchFilesRequest {
+  string query = 1;                 // Search query
+  repeated string device_ids = 2;    // Optional, limit to specific devices
+  repeated string file_types = 3;    // Optional, filter by file types
+  string path_prefix = 4;           // Optional, search only under this path
+  int32 limit = 5;
+  int32 offset = 6;
+  bool search_content = 7;          // Whether to search file contents too
+}
+
+// SearchFilesResponse contains search results
+message SearchFilesResponse {
+  repeated FileInfo files = 1;
+  int32 total_count = 2;
+}
+
+// SyncFilesRequest initiates file synchronization
+message SyncFilesRequest {
+  string source_path = 1;
+  string destination_path = 2;
+  string source_device_id = 3;
+  string destination_device_id = 4;
+  bool bidirectional = 5;          // Whether to sync in both directions
+  bool delete_extras = 6;          // Whether to delete files not in source
+  repeated string exclude_patterns = 7;  // Patterns to exclude
+}
+
+// SyncFilesResponse contains results of a sync operation
+message SyncFilesResponse {
+  bool success = 1;
+  string message = 2;
+  string task_id = 3;              // ID of the sync task for progress tracking
+}
+
+// GetStorageStatsRequest gets storage stats
+message GetStorageStatsRequest {
+  repeated string device_ids = 1;   // Optional, specific devices to query
+}
+
+// GetStorageStatsResponse contains storage stats
+message GetStorageStatsResponse {
+  repeated StorageStats stats = 1;
+}
+
+// WatchChangesRequest watches for file changes
+message WatchChangesRequest {
+  string device_id = 1;          // Device ID to watch
+  repeated string paths = 2;     // Paths to watch (can include glob patterns)
+  bool recursive = 3;            // Whether to watch recursively
+  repeated FileChangeType change_types = 4;  // Types of changes to watch for
+}
+
+// WatchChangesResponse confirms watching has started
+message WatchChangesResponse {
+  bool success = 1;
+  string message = 2;
+  string watch_id = 3;           // Unique identifier for this watch session
+}
+
+// StopWatchingRequest stops a watch session
+message StopWatchingRequest {
+  string watch_id = 1;           // Watch ID to stop
+}
+
+// StopWatchingResponse confirms watching has stopped
+message StopWatchingResponse {
+  bool success = 1;
+  string message = 2;
+} 

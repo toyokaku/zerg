@@ -1,0 +1,190 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/toyokaku/zerg/proto";
+
+// TaskRouterService handles task scheduling and distribution
+service TaskRouterService {
+  // Submit a new task to the mesh
+  rpc SubmitTask(SubmitTaskRequest) returns (SubmitTaskResponse) {}
+  
+  // Get the status of a task
+  rpc GetTaskStatus(GetTaskStatusRequest) returns (GetTaskStatusResponse) {}
+  
+  // Cancel a running task
+  rpc CancelTask(CancelTaskRequest) returns (CancelTaskResponse) {}
+  
+  // List all tasks with optional filtering
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {}
+  
+  // Stream task updates for real-time monitoring
+  rpc StreamTaskUpdates(StreamTaskUpdatesRequest) returns (stream TaskUpdate) {}
+}
+
+// Task represents a unit of work in the system
+message Task {
+  string id = 1;
+  string name = 2;
+  TaskType type = 3;
+  TaskStatus status = 4;
+  int64 created_at = 5;  // Unix timestamp in milliseconds
+  int64 updated_at = 6;  // Unix timestamp in milliseconds
+  string assigned_device_id = 7;  // ID of the device executing the task
+  ResourceRequirements requirements = 8;
+  map<string, string> properties = 9;  // Task-specific properties
+  int32 priority = 10;  // Priority level (higher = more important)
+  repeated TaskStep steps = 11;  // Sequence of steps for this task
+  repeated string input_files = 12;  // Input file paths
+  repeated string output_files = 13;  // Output file paths
+}
+
+// TaskType represents different categories of tasks
+enum TaskType {
+  TASK_TYPE_UNSPECIFIED = 0;
+  TASK_TYPE_PHOTO_SYNC = 1;
+  TASK_TYPE_PHOTO_PROCESS = 2;
+  TASK_TYPE_INFERENCE = 3;
+  TASK_TYPE_MEDIA_TRANSCODE = 4;
+  TASK_TYPE_SYSTEM = 5;
+}
+
+// TaskStatus represents the current state of a task
+enum TaskStatus {
+  TASK_STATUS_UNKNOWN = 0;
+  TASK_STATUS_PENDING = 1;
+  TASK_STATUS_SCHEDULED = 2;
+  TASK_STATUS_RUNNING = 3;
+  TASK_STATUS_COMPLETED = 4;
+  TASK_STATUS_FAILED = 5;
+  TASK_STATUS_CANCELED = 6;
+}
+
+// ResourceRequirements specifies what resources a task needs
+message ResourceRequirements {
+  bool gpu_required = 1;
+  int32 min_memory_mb = 2;
+  int32 min_storage_mb = 3;
+  int32 min_bandwidth_mbps = 4;
+  repeated string required_capabilities = 5;
+}
+
+// TaskStep represents a single step within a task
+message TaskStep {
+  string id = 1;
+  string name = 2;
+  TaskStepStatus status = 3;
+  int64 started_at = 4;  // Unix timestamp in milliseconds
+  int64 completed_at = 5;  // Unix timestamp in milliseconds
+  string error_message = 6;
+  map<string, string> outputs = 7;  // Step-specific outputs
+}
+
+// TaskStepStatus represents the status of a task step
+enum TaskStepStatus {
+  TASK_STEP_STATUS_UNKNOWN = 0;
+  TASK_STEP_STATUS_PENDING = 1;
+  TASK_STEP_STATUS_RUNNING = 2;
+  TASK_STEP_STATUS_COMPLETED = 3;
+  TASK_STEP_STATUS_FAILED = 4;
+  TASK_STEP_STATUS_SKIPPED = 5;
+}
+
+// TaskUpdate is used for streaming updates about tasks
+message TaskUpdate {
+  string task_id = 1;
+  TaskStatus status = 2;
+  string message = 3;
+  int64 timestamp = 4;  // Unix timestamp in milliseconds
+  oneof update {
+    TaskStepUpdate step_update = 5;
+    TaskProgressUpdate progress_update = 6;
+    TaskCompletedUpdate completed_update = 7;
+    TaskFailedUpdate failed_update = 8;
+  }
+}
+
+// TaskStepUpdate contains information about a step update
+message TaskStepUpdate {
+  string step_id = 1;
+  TaskStepStatus status = 2;
+  map<string, string> outputs = 3;
+}
+
+// TaskProgressUpdate contains progress information
+message TaskProgressUpdate {
+  double percent_complete = 1;
+  string current_operation = 2;
+  int64 estimated_completion_time = 3;  // Unix timestamp in milliseconds
+}
+
+// TaskCompletedUpdate contains information about a completed task
+message TaskCompletedUpdate {
+  repeated string result_files = 1;
+  map<string, string> result_data = 2;
+}
+
+// TaskFailedUpdate contains information about a failed task
+message TaskFailedUpdate {
+  string error_code = 1;
+  string error_message = 2;
+  bool can_retry = 3;
+}
+
+// SubmitTaskRequest submits a new task
+message SubmitTaskRequest {
+  string name = 1;
+  TaskType type = 2;
+  ResourceRequirements requirements = 3;
+  map<string, string> properties = 4;
+  int32 priority = 5;
+  repeated string input_files = 6;
+  repeated string output_files = 7;
+}
+
+// SubmitTaskResponse contains the submitted task info
+message SubmitTaskResponse {
+  Task task = 1;
+}
+
+// GetTaskStatusRequest gets the status of a task
+message GetTaskStatusRequest {
+  string task_id = 1;
+}
+
+// GetTaskStatusResponse contains task status info
+message GetTaskStatusResponse {
+  Task task = 1;
+}
+
+// CancelTaskRequest cancels a running task
+message CancelTaskRequest {
+  string task_id = 1;
+}
+
+// CancelTaskResponse confirms task cancellation
+message CancelTaskResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// ListTasksRequest lists tasks with optional filtering
+message ListTasksRequest {
+  repeated TaskStatus status_filter = 1;
+  string device_id_filter = 2;
+  TaskType type_filter = 3;
+  int32 limit = 4;
+  int32 offset = 5;
+}
+
+// ListTasksResponse contains a list of tasks
+message ListTasksResponse {
+  repeated Task tasks = 1;
+  int32 total_count = 2;
+}
+
+// StreamTaskUpdatesRequest specifies which tasks to stream updates for
+message StreamTaskUpdatesRequest {
+  repeated string task_ids = 1;  // If empty, stream updates for all tasks
+  bool include_completed = 2;  // Whether to include updates for completed tasks
+} 
